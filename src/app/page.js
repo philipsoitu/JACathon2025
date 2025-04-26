@@ -50,9 +50,15 @@ export default async function Home() {
             </p>
             <div className="mt-8">
               <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700" asChild>
-                <Link href="/trips/new">
-                  Create a Trip <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
+                {session ? (
+                  <Link href="/trips/new">
+                    Create a Trip <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                ) : (
+                    <Link href="/auth/login">
+                      Get Started<ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  )}
               </Button>
             </div>
           </div>
