@@ -1,22 +1,39 @@
 import Link from "next/link"
 import { ArrowRight, Map, Calendar, Users, ThumbsUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { auth0 } from "@/lib/auth0"
+import { Label } from "@/components/ui/label"
 
-export default function Home() {
+
+export default async function Home() {
+
+  const session = await auth0.getSession();
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-emerald-600">TripSync</h1>
+            { session ? 
+            (
+          <div className="flex gap-2">
+                <Label>Hi, {session.user.name}</Label>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/auth/logout">Log out</Link>
+                </Button>
+          </div>
+            ) :(
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">Login</Link>
+              <Link href="/auth/login?screen_hint=signup">Sign up</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="/signup">Sign up</Link>
+              <Link href="/auth/login">Log in</Link>
             </Button>
           </div>
+            )
+            }
         </div>
       </header>
 
