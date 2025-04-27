@@ -21,43 +21,42 @@ export async function POST(request) {
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,       // ← top‐level is now an array
-          items: {                // ← each item must match this object
-            type: Type.OBJECT,
-            properties: {
-              name: {
-                type: Type.STRING,
-                description: "Name of the destination or activity",
-                nullable: false
-              },
-              price: {
-                type: Type.NUMBER,
-                description: "Estimated cost in US$",
-                nullable: false
-              },
-              description: {
-                type: Type.STRING,
-                description: "Short description of the plan",
-                nullable: false
-              },
-              lat: {
-                type: Type.NUMBER,
-                description: "Latitude coordinate",
-                nullable: false
-              },
-              longi: {
-                type: Type.NUMBER,
-                description: "Longitude coordinate",
-                nullable: false
-              }
-            },
-            required: ["name", "price", "description", "lat", "longi"]
-          }
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name:        { type: Type.STRING,  nullable: false },
+            price:       { type: Type.NUMBER,  nullable: false },
+            description: { type: Type.STRING,  nullable: false },
+            lat:         { type: Type.NUMBER,  nullable: false },
+            longi:       { type: Type.NUMBER,  nullable: false },
+          },
+          required: ["name","price","description","lat","longi"]
         }
       }
-    });
+    }
+  });
 
     //RETURN JSON //TEMPORARY WE SHALL PARSE AFTER
+
+    //me when i absolutley lie, we parse now
+    let plans;
+    try{
+        plans = JSON.parse(response.text);
+    } catch(e) {
+        //errored out the request
+        return new Response(
+            JSON.stringify({ error: "Gemini returned invalid JSON" }),
+            { status: 500, headers: { "Content-Type": "application/json" } }
+          );}
+    //now iterate and parse
+    for(const plan of plans){
+        const{name,price,description,lat,longi} = plan;
+        //here will go actual database bs
+        console.log("Plan:", name, price, description, lat, longi,'\n');
+    }
+
+    //this will get deleted we dont really need this no more
     //console.log(response.text);
     return new Response(
       response.text,
@@ -66,6 +65,7 @@ export async function POST(request) {
         headers: { "Content-Type": "application/json" }
       }
     );
+
   } catch (err) {
     console.error("Error calling Gemini API:", err);
     return new Response(
