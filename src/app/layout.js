@@ -6,7 +6,7 @@ import { SessionProvider } from "@/contexts/SessionContext"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "TripSync - Collaborative Trip Planning",
+  title: "RoadTripSync",
   description: "Plan trips together in real-time with friends and family",
 }
 

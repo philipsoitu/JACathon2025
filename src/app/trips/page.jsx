@@ -46,7 +46,7 @@ export default function TripsPage() {
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xl font-bold text-emerald-600">
-            TripSync
+            RoadTripSync
           </Link>
           <Button size="icon" variant="ghost" className="rounded-full">
             <span className="sr-only">User menu</span>
