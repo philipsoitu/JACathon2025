@@ -17,12 +17,13 @@ export default function TripDetailPage({ params }) {
   const tripId = use(params).id
   const session = useSession()
   const isMobile = useMobile()
-  const [activeTab, setActiveTab] = useState("timeline")
+  const [activeTab, setActiveTab] = useState("map")
   const [trip, setTrip] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [locations, setLocations] = useState({ currentLocations: [], plannedLocations: [] })
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false)
+  const [newActivityLocation, setNewActivityLocation] = useState(null)
 
   // Fetch trip data
   useEffect(() => {
@@ -115,27 +116,110 @@ export default function TripDetailPage({ params }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(activityData)
+        body: JSON.stringify({
+          title: activityData.title,
+          time: activityData.time,
+          long: parseFloat(activityData.long),
+          lat: parseFloat(activityData.lat),
+          day: parseInt(activityData.day)
+        })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add activity');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add activity');
       }
 
       const data = await response.json();
       
-      // Update trip data with new activity
+      // Update trip data with new activity, ensuring coordinates are numbers
       setTrip(prev => ({
         ...prev,
-        activities: [...(prev.activities || []), data]
+        activities: [...(prev.activities || []), {
+          ...data,
+          lat: parseFloat(data.lat),
+          long: parseFloat(data.long),
+          day: parseInt(data.day)
+        }]
       }));
 
       toast.success('Activity added successfully');
       setIsAddActivityOpen(false);
     } catch (error) {
       console.error('Error adding activity:', error);
-      toast.error('Failed to add activity');
+      toast.error(error.message || 'Failed to add activity');
     }
+  };
+
+  const handleUpdateActivity = async (activityId, updates) => {
+    try {
+      const response = await fetch(`/api/trips/${tripId}/activities`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          activityId,
+          ...updates,
+          long: updates.long ? parseFloat(updates.long) : undefined,
+          lat: updates.lat ? parseFloat(updates.lat) : undefined,
+          day: updates.day ? parseInt(updates.day) : undefined
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update activity');
+      }
+
+      // Update trip data with updated activity
+      setTrip(prev => ({
+        ...prev,
+        activities: prev.activities.map(activity =>
+          activity.id === activityId ? {
+            ...activity,
+            ...updates,
+            lat: updates.lat ? parseFloat(updates.lat) : activity.lat,
+            long: updates.long ? parseFloat(updates.long) : activity.long,
+            day: updates.day ? parseInt(updates.day) : activity.day
+          } : activity
+        )
+      }));
+
+      toast.success('Activity updated successfully');
+    } catch (error) {
+      console.error('Error updating activity:', error);
+      toast.error(error.message || 'Failed to update activity');
+    }
+  };
+
+  const handleDeleteActivity = async (activityId) => {
+    try {
+      const response = await fetch(`/api/trips/${tripId}/activities?activityId=${activityId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete activity');
+      }
+
+      // Remove activity from trip data
+      setTrip(prev => ({
+        ...prev,
+        activities: prev.activities.filter(activity => activity.id !== activityId)
+      }));
+
+      toast.success('Activity deleted successfully');
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      toast.error(error.message || 'Failed to delete activity');
+    }
+  };
+
+  const handleMapClick = (lat, long) => {
+    setNewActivityLocation({ lat, long });
+    setIsAddActivityOpen(true);
   };
 
   if (loading) {
@@ -183,8 +267,12 @@ export default function TripDetailPage({ params }) {
 
       {/* Main content */}
       <main className="flex-1 overflow-hidden">
-        <Tabs defaultValue="timeline" value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+        <Tabs defaultValue="maps" value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <TabsList className="grid grid-cols-2 px-4 py-2 bg-white border-b">
+            <TabsTrigger value="map" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
+              <MapIcon className="h-4 w-4 mr-2" />
+              Map
+            </TabsTrigger>
             <TabsTrigger
               value="timeline"
               className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600"
@@ -192,41 +280,27 @@ export default function TripDetailPage({ params }) {
               <Calendar className="h-4 w-4 mr-2" />
               Timeline
             </TabsTrigger>
-            <TabsTrigger value="map" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
-              <MapIcon className="h-4 w-4 mr-2" />
-              Map
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="timeline" className="flex-1 p-0 m-0 overflow-hidden">
-            <TripTimeline trip={trip} />
+            <TripTimeline 
+              trip={trip} 
+              onAddActivity={handleAddActivity}
+              onUpdateActivity={handleUpdateActivity}
+              onDeleteActivity={handleDeleteActivity}
+            />
           </TabsContent>
 
           <TabsContent value="map" className="flex-1 p-0 m-0 overflow-hidden">
-            <TripMap 
-              trip={{
-                ...trip,
-                locations: [
-                  ...locations.currentLocations.map(loc => ({
-                    id: loc.name,
-                    name: loc.name,
-                    coordinates: [loc.longitude, loc.latitude],
-                    startDate: loc.startDate,
-                    endDate: loc.endDate,
-                    type: 'current'
-                  })),
-                  ...locations.plannedLocations.map(loc => ({
-                    id: loc.name,
-                    name: loc.name,
-                    coordinates: [loc.longitude, loc.latitude],
-                    startDate: loc.startDate,
-                    endDate: loc.endDate,
-                    type: 'planned'
-                  }))
-                ]
-              }}
-              onAddLocation={addLocation}
-              onUpdateLocations={updateLocations}
+            <TripMap
+              activities={trip.activities.map(act => ({
+                id: act.id,
+                name: act.title,
+                coordinates: [act.long, act.lat],
+                time: act.time,
+                day: act.day
+              }))}
+              onMapClick={handleMapClick}
             />
           </TabsContent>
         </Tabs>
@@ -247,18 +321,12 @@ export default function TripDetailPage({ params }) {
         open={isAddActivityOpen}
         onOpenChange={setIsAddActivityOpen}
         onSubmit={handleAddActivity}
+        initialLocation={newActivityLocation}
       />
 
       {/* Mobile Navigation */}
       <div className="sticky bottom-0 bg-white border-t border-gray-200 p-2">
         <div className="flex justify-around">
-          <button
-            onClick={() => setActiveTab("timeline")}
-            className={`flex flex-col items-center p-2 ${activeTab === "timeline" ? "text-emerald-600" : "text-gray-500"}`}
-          >
-            <Calendar className="h-6 w-6" />
-            <span className="text-xs mt-1">Timeline</span>
-          </button>
           <button
             onClick={() => setActiveTab("map")}
             className={`flex flex-col items-center p-2 ${activeTab === "map" ? "text-emerald-600" : "text-gray-500"}`}
@@ -266,9 +334,12 @@ export default function TripDetailPage({ params }) {
             <MapIcon className="h-6 w-6" />
             <span className="text-xs mt-1">Map</span>
           </button>
-          <button className="flex flex-col items-center p-2 text-gray-500">
-            <MessageSquare className="h-6 w-6" />
-            <span className="text-xs mt-1">Chat</span>
+          <button
+            onClick={() => setActiveTab("timeline")}
+            className={`flex flex-col items-center p-2 ${activeTab === "timeline" ? "text-emerald-600" : "text-gray-500"}`}
+          >
+            <Calendar className="h-6 w-6" />
+            <span className="text-xs mt-1">Timeline</span>
           </button>
         </div>
       </div>
