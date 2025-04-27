@@ -1,13 +1,125 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Calendar, MapPin, Clock, ThumbsUpIcon, MessageSquare, Plane, Home, MountainIcon as Hiking, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { format, addDays } from "date-fns"
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+
+// Note: In a real application, you would use an environment variable for this
+mapboxgl.accessToken = "pk.eyJ1IjoiZHJwaGlsNTA0MyIsImEiOiJjbTl5eXp5bjUxb25jMmtvcHl4Y2xlZ29zIn0.M1LN3ZUwUkCl9jamss9Oxg"
 
 export default function TripTimeline({ trip }) {
   const [votedActivities, setVotedActivities] = useState([])
+  const [isAddingActivity, setIsAddingActivity] = useState(false)
+  const [newActivity, setNewActivity] = useState({
+    title: "",
+    type: "activity",
+    time: "",
+    location: "",
+    longitude: null,
+    latitude: null,
+    day: 1
+  })
+  const [error, setError] = useState(null)
+  const mapContainer = useRef(null)
+  const map = useRef(null)
+  const marker = useRef(null)
+
+  // Calculate total days in trip
+  const tripStart = new Date(trip.beginDate)
+  const tripEnd = new Date(trip.endDate)
+  const totalDays = Math.ceil((tripEnd - tripStart) / (1000 * 60 * 60 * 24))
+
+  useEffect(() => {
+    if (!mapContainer.current || !isAddingActivity) return;
+
+    try {
+      // Always remove existing map before creating a new one
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+
+      // Initialize map
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/outdoors-v12",
+        center: [-98.5795, 39.8283], // Default to US center
+        zoom: 4,
+        attributionControl: false
+      });
+
+      // Add navigation controls
+      map.current.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+      // Add click handler
+      map.current.on('click', (e) => {
+        const { lng, lat } = e.lngLat;
+        
+        // Remove existing marker if any
+        if (marker.current) {
+          marker.current.remove();
+        }
+        
+        // Add new marker
+        marker.current = new mapboxgl.Marker()
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+        
+        setNewActivity(prev => ({
+          ...prev,
+          longitude: lng,
+          latitude: lat
+        }));
+
+        // Reverse geocode
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`, {
+          headers: {
+            'Origin': window.location.origin
+          }
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.features && data.features.length > 0) {
+              setNewActivity(prev => ({
+                ...prev,
+                location: data.features[0].place_name
+              }));
+            }
+          })
+          .catch(err => {
+            console.error('Error reverse geocoding:', err);
+          });
+      });
+
+      // Force map resize after render
+      setTimeout(() => {
+        map.current.resize();
+      }, 100);
+
+    } catch (err) {
+      console.error("Error initializing map:", err);
+    }
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      if (marker.current) {
+        marker.current.remove();
+        marker.current = null;
+      }
+    };
+  }, [isAddingActivity]);
 
   // Group activities by day (handle undefined activities)
   const activitiesByDay = (trip.activities || []).reduce((acc, activity) => {
