@@ -28,8 +28,6 @@ export async function POST(request, context) {
       time,
       location,
       day,
-      votes: 0,
-      comments: 0,
       createdAt: new Date()
     };
 

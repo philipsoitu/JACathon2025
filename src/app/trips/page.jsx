@@ -98,8 +98,7 @@ export default function TripsPage() {
                   title: trip.title,
                   dateRange: `${new Date(trip.beginDate).toLocaleDateString()} - ${new Date(trip.endDate).toLocaleDateString()}`,
                   participants: (trip.participants || []).length + 1, // +1 for owner, default to empty array if undefined
-                  locations: trip.locations || [],
-                  image: trip.image || "/placeholder.svg?height=100&width=200"
+                  locations: trip.locations || []
                 }} 
               />
             ))

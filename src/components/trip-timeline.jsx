@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, MapPin, Clock, ThumbsUpIcon, MessageSquare, Plane, Home, MountainIcon as Hiking, Plus } from "lucide-react"
+import { Calendar, MapPin, Clock, Plane, Home, MountainIcon as Hiking, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -17,7 +17,6 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 mapboxgl.accessToken = "pk.eyJ1IjoiZHJwaGlsNTA0MyIsImEiOiJjbTl5eXp5bjUxb25jMmtvcHl4Y2xlZ29zIn0.M1LN3ZUwUkCl9jamss9Oxg"
 
 export default function TripTimeline({ trip }) {
-  const [votedActivities, setVotedActivities] = useState([])
   const [isAddingActivity, setIsAddingActivity] = useState(false)
   const [newActivity, setNewActivity] = useState({
     title: "",
@@ -130,16 +129,6 @@ export default function TripTimeline({ trip }) {
     return acc
   }, {})
 
-  const handleVote = (activityId) => {
-    setVotedActivities((prev) => {
-      if (prev.includes(activityId)) {
-        return prev.filter((id) => id !== activityId)
-      } else {
-        return [...prev, activityId]
-      }
-    })
-  }
-
   const getActivityIcon = (type) => {
     switch (type) {
       case "travel":
@@ -203,42 +192,25 @@ export default function TripTimeline({ trip }) {
             <div className="space-y-3">
               {activitiesByDay[Number.parseInt(day)].map((activity) => (
                 <div key={activity.id} className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <div className="flex items-start">
-                    <div className={`p-2 rounded-lg ${getActivityColor(activity.type)}`}>
-                      {getActivityIcon(activity.type)}
+                  <div className={`p-2 rounded-lg ${getActivityColor(activity.type)}`}>
+                    {getActivityIcon(activity.type)}
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h4 className="font-medium">{activity.title}</h4>
+                    <div className="mt-1 space-y-1">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
+                        {activity.time}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <MapPin className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
+                        {activity.location}
+                      </div>
                     </div>
-                    <div className="ml-3 flex-1">
-                      <h4 className="font-medium">{activity.title}</h4>
-                      <div className="mt-1 space-y-1">
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
-                          {activity.time}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <MapPin className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
-                          {activity.location}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`h-8 px-2 text-xs ${votedActivities.includes(activity.id) ? "text-emerald-600" : "text-gray-500"}`}
-                            onClick={() => handleVote(activity.id)}
-                          >
-                            <ThumbsUpIcon className="h-3.5 w-3.5 mr-1.5" />
-                            {activity.votes + (votedActivities.includes(activity.id) ? 1 : 0)}
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-gray-500">
-                            <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                            {activity.comments}
-                          </Button>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {activity.type}
-                        </Badge>
-                      </div>
+                    <div className="mt-3 flex items-center justify-end">
+                      <Badge variant="outline" className="text-xs">
+                        {activity.type}
+                      </Badge>
                     </div>
                   </div>
                 </div>

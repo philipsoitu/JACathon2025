@@ -6,7 +6,6 @@ import Link from "next/link"
 import { ArrowLeft, Calendar, MapIcon, MessageSquare, Share2, Plus, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useMobile } from "@/hooks/use-mobile"
 import TripMap from "@/components/trip-map"
 import TripTimeline from "@/components/trip-timeline"
@@ -17,7 +16,6 @@ export default function TripDetailPage({ params }) {
   const session = useSession()
   const isMobile = useMobile()
   const [activeTab, setActiveTab] = useState("timeline")
-  const [isConnected, setIsConnected] = useState(false)
   const [trip, setTrip] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -147,30 +145,6 @@ export default function TripDetailPage({ params }) {
               <MoreHorizontal className="h-5 w-5" />
             </Button>
           </div>
-        </div>
-
-        {/* Connection status */}
-        <div className="mt-2 flex items-center">
-          <div className={`h-2 w-2 rounded-full mr-2 ${isConnected ? "bg-green-500" : "bg-amber-500"}`}></div>
-          <span className="text-xs text-gray-500">{isConnected ? "Connected - Live updates on" : "Connecting..."}</span>
-        </div>
-
-        {/* Participants */}
-        <div className="mt-3 flex items-center">
-          <div className="flex -space-x-2 mr-2">
-            {(trip.participants || []).slice(0, 3).map((participant, index) => (
-              <Avatar key={index} className="h-6 w-6 border-2 border-white">
-                <AvatarImage src="/placeholder.svg" alt={participant} />
-                <AvatarFallback>{participant[0]}</AvatarFallback>
-              </Avatar>
-            ))}
-            {(trip.participants || []).length > 3 && (
-              <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 border-2 border-white">
-                +{trip.participants.length - 3}
-              </div>
-            )}
-          </div>
-          <span className="text-xs text-gray-500">{(trip.participants || []).length + 1} participants</span>
         </div>
       </header>
 
