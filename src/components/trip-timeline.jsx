@@ -2,15 +2,15 @@
 
 import { useState } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, MapPin, Clock, ThumbsUpIcon, MessageSquare, Plane, Home, MountainIcon as Hiking } from "lucide-react"
+import { Calendar, MapPin, Clock, ThumbsUpIcon, MessageSquare, Plane, Home, MountainIcon as Hiking, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
 export default function TripTimeline({ trip }) {
   const [votedActivities, setVotedActivities] = useState([])
 
-  // Group activities by day
-  const activitiesByDay = trip.activities.reduce((acc, activity) => {
+  // Group activities by day (handle undefined activities)
+  const activitiesByDay = (trip.activities || []).reduce((acc, activity) => {
     if (!acc[activity.day]) {
       acc[activity.day] = []
     }
@@ -54,6 +54,25 @@ export default function TripTimeline({ trip }) {
     }
   }
 
+  // If there are no activities, show a placeholder
+  if (!trip.activities || trip.activities.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+        <div className="bg-gray-50 rounded-full p-3 mb-4">
+          <Calendar className="h-6 w-6 text-gray-400" />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No Activities Yet</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Start planning your trip by adding some activities to your timeline.
+        </p>
+        <Button className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Activity
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-6">
@@ -62,10 +81,11 @@ export default function TripTimeline({ trip }) {
             <div className="sticky top-0 bg-gray-50 py-2 px-3 rounded-md">
               <h3 className="font-medium text-gray-700">
                 Day {day} -{" "}
-                {new Date(2025, 4, 14 + Number.parseInt(day)).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+                {new Date(new Date(trip.beginDate).getTime() + (Number.parseInt(day) - 1) * 24 * 60 * 60 * 1000)
+                  .toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
               </h3>
             </div>
             <div className="space-y-3">

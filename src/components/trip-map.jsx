@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { Button } from "@/components/ui/button"
-import { MapPin, ZoomIn, ZoomOut } from "lucide-react"
+import { MapPin, ZoomIn, ZoomOut, Plus } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { DatePickerWithRange } from "@/components/date-range-picker"
 
 // Note: In a real application, you would use an environment variable for this
 // and not hardcode it in the client-side code
@@ -24,11 +28,19 @@ const transformRequest = (url, resourceType) => {
   return { url }
 }
 
-export default function TripMap({ trip }) {
+export default function TripMap({ trip, onAddLocation, onUpdateLocations }) {
   const mapContainer = useRef(null)
   const map = useRef(null)
   const [selectedLocation, setSelectedLocation] = useState(null)
   const [error, setError] = useState(null)
+  const [isAddingLocation, setIsAddingLocation] = useState(false)
+  const [newLocation, setNewLocation] = useState({
+    name: "",
+    latitude: "",
+    longitude: "",
+    type: "planned",
+    dateRange: { from: undefined, to: undefined }
+  })
 
   useEffect(() => {
     if (!mapContainer.current) {
@@ -57,6 +69,17 @@ export default function TripMap({ trip }) {
       // Add navigation controls
       map.current.addControl(new mapboxgl.NavigationControl(), "bottom-right")
 
+      // Add click handler for adding new locations
+      map.current.on('click', (e) => {
+        if (isAddingLocation) {
+          setNewLocation(prev => ({
+            ...prev,
+            latitude: e.lngLat.lat.toFixed(6),
+            longitude: e.lngLat.lng.toFixed(6)
+          }));
+        }
+      });
+
       console.log("Map initialized successfully")
     } catch (err) {
       console.error("Error initializing map:", err)
@@ -72,7 +95,7 @@ export default function TripMap({ trip }) {
     }
   }, [])
 
-  // Add markers when map is loaded
+  // Add markers when map is loaded or locations change
   useEffect(() => {
     if (!map.current) {
       console.log("Map not initialized yet")
@@ -82,6 +105,12 @@ export default function TripMap({ trip }) {
     const addMarkers = () => {
       try {
         console.log("Adding markers for locations:", trip.locations)
+        // Remove existing markers
+        const markers = document.getElementsByClassName('mapboxgl-marker');
+        while(markers[0]) {
+          markers[0].remove();
+        }
+
         // Create bounds to fit all markers
         const bounds = new mapboxgl.LngLatBounds()
 
@@ -93,14 +122,26 @@ export default function TripMap({ trip }) {
           el.innerHTML = `
             <div class="absolute flex items-center justify-center w-8 h-8 cursor-pointer">
               <div class="absolute w-4 h-4 bg-white rounded-full"></div>
-              <div class="absolute w-3 h-3 bg-emerald-500 rounded-full"></div>
+              <div class="absolute w-3 h-3 ${location.type === 'current' ? 'bg-emerald-500' : 'bg-amber-500'} rounded-full"></div>
             </div>
           `
 
           // Add marker to map
           new mapboxgl.Marker(el)
             .setLngLat(location.coordinates)
-            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<h3 class="font-medium">${location.name}</h3>`))
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 }).setHTML(`
+                <div class="p-2">
+                  <h3 class="font-medium">${location.name}</h3>
+                  <p class="text-sm text-gray-500">
+                    ${new Date(location.startDate).toLocaleDateString()} - ${new Date(location.endDate).toLocaleDateString()}
+                  </p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    ${location.type === 'current' ? 'Current Location' : 'Planned Location'}
+                  </p>
+                </div>
+              `)
+            )
             .addTo(map.current)
 
           // Add location to bounds
@@ -112,11 +153,13 @@ export default function TripMap({ trip }) {
           })
         })
 
-        // Fit map to bounds with padding
-        map.current.fitBounds(bounds, {
-          padding: 50,
-          maxZoom: 10,
-        })
+        // Fit map to bounds with padding if there are locations
+        if (trip.locations.length > 0) {
+          map.current.fitBounds(bounds, {
+            padding: 50,
+            maxZoom: 10,
+          })
+        }
       } catch (err) {
         console.error("Error adding markers:", err)
         setError(err.message)
@@ -132,22 +175,34 @@ export default function TripMap({ trip }) {
     }
   }, [trip.locations])
 
-  const handleZoomIn = () => {
-    map.current?.zoomIn()
-  }
+  const handleAddLocation = async () => {
+    if (!newLocation.name || !newLocation.latitude || !newLocation.longitude || !newLocation.dateRange.from || !newLocation.dateRange.to) {
+      setError("Please fill in all location details");
+      return;
+    }
 
-  const handleZoomOut = () => {
-    map.current?.zoomOut()
-  }
+    try {
+      await onAddLocation({
+        name: newLocation.name,
+        latitude: parseFloat(newLocation.latitude),
+        longitude: parseFloat(newLocation.longitude),
+        startDate: newLocation.dateRange.from.toISOString(),
+        endDate: newLocation.dateRange.to.toISOString()
+      }, newLocation.type);
 
-  const handleFlyToLocation = (location) => {
-    map.current?.flyTo({
-      center: location.coordinates,
-      zoom: 12,
-      essential: true,
-    })
-    setSelectedLocation(location)
-  }
+      // Reset form
+      setNewLocation({
+        name: "",
+        latitude: "",
+        longitude: "",
+        type: "planned",
+        dateRange: { from: undefined, to: undefined }
+      });
+      setIsAddingLocation(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   return (
     <div className="relative h-full w-full">
@@ -158,23 +213,93 @@ export default function TripMap({ trip }) {
       )}
       <div 
         ref={mapContainer} 
-        className="absolute inset-0" 
+        className={`absolute inset-0 ${isAddingLocation ? 'cursor-crosshair' : 'cursor-default'}`}
         style={{ minHeight: "400px" }}
       />
 
       {/* Location list */}
       <div className="absolute top-4 left-4 z-10">
         <div className="bg-white rounded-lg shadow-md p-2 max-h-60 overflow-auto w-64">
-          <h3 className="font-medium text-gray-700 px-2 py-1 border-b">Locations</h3>
+          <div className="flex items-center justify-between px-2 py-1 border-b">
+            <h3 className="font-medium text-gray-700">Locations</h3>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" onClick={() => setIsAddingLocation(true)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Location</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Location Name</Label>
+                    <Input
+                      value={newLocation.name}
+                      onChange={(e) => setNewLocation(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Enter location name"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Latitude</Label>
+                      <Input
+                        value={newLocation.latitude}
+                        onChange={(e) => setNewLocation(prev => ({ ...prev, latitude: e.target.value }))}
+                        placeholder="Click on map"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Longitude</Label>
+                      <Input
+                        value={newLocation.longitude}
+                        onChange={(e) => setNewLocation(prev => ({ ...prev, longitude: e.target.value }))}
+                        placeholder="Click on map"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <select
+                      className="w-full border rounded-md p-2"
+                      value={newLocation.type}
+                      onChange={(e) => setNewLocation(prev => ({ ...prev, type: e.target.value }))}
+                    >
+                      <option value="current">Current Location</option>
+                      <option value="planned">Planned Location</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date Range</Label>
+                    <DatePickerWithRange
+                      date={newLocation.dateRange}
+                      setDate={(range) => setNewLocation(prev => ({ ...prev, dateRange: range }))}
+                    />
+                  </div>
+                  <Button onClick={handleAddLocation} className="w-full">
+                    Add Location
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           <ul className="mt-1">
             {trip.locations.map((location) => (
               <li key={location.id}>
                 <Button
                   variant="ghost"
                   className={`w-full justify-start text-sm h-auto py-2 ${selectedLocation?.id === location.id ? "bg-emerald-50 text-emerald-600" : ""}`}
-                  onClick={() => handleFlyToLocation(location)}
+                  onClick={() => {
+                    setSelectedLocation(location)
+                    map.current?.flyTo({
+                      center: location.coordinates,
+                      zoom: 12,
+                      essential: true,
+                    })
+                  }}
                 >
-                  <MapPin className="h-4 w-4 mr-2" />
+                  <MapPin className={`h-4 w-4 mr-2 ${location.type === 'current' ? 'text-emerald-500' : 'text-amber-500'}`} />
                   {location.name}
                 </Button>
               </li>
@@ -189,7 +314,7 @@ export default function TripMap({ trip }) {
           variant="secondary"
           size="icon"
           className="h-10 w-10 rounded-full bg-white shadow-md"
-          onClick={handleZoomIn}
+          onClick={() => map.current?.zoomIn()}
         >
           <ZoomIn className="h-5 w-5" />
         </Button>
@@ -197,7 +322,7 @@ export default function TripMap({ trip }) {
           variant="secondary"
           size="icon"
           className="h-10 w-10 rounded-full bg-white shadow-md"
-          onClick={handleZoomOut}
+          onClick={() => map.current?.zoomOut()}
         >
           <ZoomOut className="h-5 w-5" />
         </Button>

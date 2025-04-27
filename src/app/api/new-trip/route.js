@@ -26,7 +26,9 @@ export async function POST(request) {
       endDate: body.endDate,
       createdAt: new Date(),
       owner: body.owner,
-      participants: []
+      participants: [],
+      currentLocations: [],
+      plannedLocations: [],
     });
 
   return NextResponse.json(result);

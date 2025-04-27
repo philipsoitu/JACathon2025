@@ -10,93 +10,118 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useMobile } from "@/hooks/use-mobile"
 import TripMap from "@/components/trip-map"
 import TripTimeline from "@/components/trip-timeline"
+import { useSession } from "@/contexts/SessionContext"
 
 export default function TripDetailPage({ params }) {
   const tripId = use(params).id
+  const session = useSession()
   const isMobile = useMobile()
   const [activeTab, setActiveTab] = useState("timeline")
   const [isConnected, setIsConnected] = useState(false)
+  const [trip, setTrip] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [locations, setLocations] = useState({ currentLocations: [], plannedLocations: [] })
 
-  // Simulate Socket.IO connection
+  // Fetch trip data
   useEffect(() => {
-    // In a real app, this would be a Socket.IO connection
-    const timer = setTimeout(() => {
-      setIsConnected(true)
-    }, 1000)
+    if (!tripId) return
 
-    return () => clearTimeout(timer)
-  }, [])
+    fetch(`/api/trips/${tripId}`)
+      .then(res => res.text())
+      .then(text => {
+        let data
+        try {
+          data = JSON.parse(text)
+        } catch (e) {
+          throw new Error("Failed to parse response")
+        }
+        setTrip(data)
+        setLocations({
+          currentLocations: data.currentLocations || [],
+          plannedLocations: data.plannedLocations || []
+        })
+      })
+      .catch(err => {
+        console.error("Failed to fetch trip:", err)
+        setError(err.message)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [tripId])
 
-  // Sample trip data
-  const trip = {
-    id: tripId,
-    title: "North America Climbing Trip",
-    dateRange: "May 15 - June 10, 2025",
-    days: 27,
-    participants: [
-      { id: "1", name: "Alex Johnson", avatar: "/placeholder.svg?height=40&width=40" },
-      { id: "2", name: "Sam Wilson", avatar: "/placeholder.svg?height=40&width=40" },
-      { id: "3", name: "Taylor Kim", avatar: "/placeholder.svg?height=40&width=40" },
-      { id: "4", name: "Jordan Smith", avatar: "/placeholder.svg?height=40&width=40" },
-    ],
-    locations: [
-      { id: "1", name: "Yosemite National Park", coordinates: [-119.5383, 37.8651] },
-      { id: "2", name: "Joshua Tree National Park", coordinates: [-115.901, 33.8734] },
-      { id: "3", name: "Red Rock Canyon", coordinates: [-115.4255, 36.1311] },
-    ],
-    activities: [
-      {
-        id: "1",
-        day: 1,
-        title: "Arrival at Yosemite",
-        type: "travel",
-        time: "10:00 AM - 12:00 PM",
-        location: "Yosemite National Park",
-        votes: 4,
-        comments: 2,
-      },
-      {
-        id: "2",
-        day: 1,
-        title: "Camp Setup",
-        type: "accommodation",
-        time: "12:30 PM - 2:00 PM",
-        location: "Upper Pines Campground",
-        votes: 3,
-        comments: 1,
-      },
-      {
-        id: "3",
-        day: 1,
-        title: "El Capitan Hike",
-        type: "activity",
-        time: "2:30 PM - 6:00 PM",
-        location: "El Capitan",
-        votes: 5,
-        comments: 3,
-      },
-      {
-        id: "4",
-        day: 2,
-        title: "Climbing at Half Dome",
-        type: "activity",
-        time: "8:00 AM - 4:00 PM",
-        location: "Half Dome",
-        votes: 5,
-        comments: 2,
-      },
-      {
-        id: "5",
-        day: 3,
-        title: "Travel to Joshua Tree",
-        type: "travel",
-        time: "9:00 AM - 3:00 PM",
-        location: "Joshua Tree National Park",
-        votes: 4,
-        comments: 1,
-      },
-    ],
+  // Add new location
+  const addLocation = async (location, type) => {
+    try {
+      const response = await fetch(`/api/trips/${tripId}/locations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ location, type })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add location');
+      }
+
+      // Update local state
+      setLocations(prev => ({
+        ...prev,
+        [type === 'current' ? 'currentLocations' : 'plannedLocations']: [
+          ...prev[type === 'current' ? 'currentLocations' : 'plannedLocations'],
+          data.location
+        ]
+      }));
+    } catch (err) {
+      console.error('Error adding location:', err);
+      throw err;
+    }
+  };
+
+  // Update all locations
+  const updateLocations = async (newLocations) => {
+    try {
+      const response = await fetch(`/api/trips/${tripId}/locations`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newLocations)
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update locations');
+      }
+
+      // Update local state
+      setLocations(newLocations);
+    } catch (err) {
+      console.error('Error updating locations:', err);
+      throw err;
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading trip details...</div>;
   }
+
+  if (error) {
+    return <div className="flex items-center justify-center h-screen text-red-600">Error: {error}</div>;
+  }
+
+  if (!trip) {
+    return <div className="flex items-center justify-center h-screen">Trip not found</div>;
+  }
+
+  const formatDateRange = (beginDate, endDate) => {
+    return `${new Date(beginDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -111,7 +136,7 @@ export default function TripDetailPage({ params }) {
             </Button>
             <div>
               <h1 className="text-lg font-bold text-gray-900">{trip.title}</h1>
-              <p className="text-sm text-gray-500">{trip.dateRange}</p>
+              <p className="text-sm text-gray-500">{formatDateRange(trip.beginDate, trip.endDate)}</p>
             </div>
           </div>
           <div className="flex items-center space-x-1">
@@ -133,19 +158,19 @@ export default function TripDetailPage({ params }) {
         {/* Participants */}
         <div className="mt-3 flex items-center">
           <div className="flex -space-x-2 mr-2">
-            {trip.participants.slice(0, 3).map((participant) => (
-              <Avatar key={participant.id} className="h-6 w-6 border-2 border-white">
-                <AvatarImage src={participant.avatar || "/placeholder.svg"} alt={participant.name} />
-                <AvatarFallback>{participant.name.charAt(0)}</AvatarFallback>
+            {(trip.participants || []).slice(0, 3).map((participant, index) => (
+              <Avatar key={index} className="h-6 w-6 border-2 border-white">
+                <AvatarImage src="/placeholder.svg" alt={participant} />
+                <AvatarFallback>{participant[0]}</AvatarFallback>
               </Avatar>
             ))}
-            {trip.participants.length > 3 && (
+            {(trip.participants || []).length > 3 && (
               <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 border-2 border-white">
                 +{trip.participants.length - 3}
               </div>
             )}
           </div>
-          <span className="text-xs text-gray-500">{trip.participants.length} participants</span>
+          <span className="text-xs text-gray-500">{(trip.participants || []).length + 1} participants</span>
         </div>
       </header>
 
@@ -171,7 +196,31 @@ export default function TripDetailPage({ params }) {
           </TabsContent>
 
           <TabsContent value="map" className="flex-1 p-0 m-0 overflow-hidden">
-            <TripMap trip={trip} />
+            <TripMap 
+              trip={{
+                ...trip,
+                locations: [
+                  ...locations.currentLocations.map(loc => ({
+                    id: loc.name,
+                    name: loc.name,
+                    coordinates: [loc.longitude, loc.latitude],
+                    startDate: loc.startDate,
+                    endDate: loc.endDate,
+                    type: 'current'
+                  })),
+                  ...locations.plannedLocations.map(loc => ({
+                    id: loc.name,
+                    name: loc.name,
+                    coordinates: [loc.longitude, loc.latitude],
+                    startDate: loc.startDate,
+                    endDate: loc.endDate,
+                    type: 'planned'
+                  }))
+                ]
+              }}
+              onAddLocation={addLocation}
+              onUpdateLocations={updateLocations}
+            />
           </TabsContent>
         </Tabs>
       </main>

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
-export async function GET(request, { params }) {
-  const { id } = params;
+export async function GET(request, context) {
+  const params = await context.params;
+  const id = params.id;
 
   if (!id) {
     return NextResponse.json({ error: 'Missing trip ID' }, { status: 400 });
