@@ -14,12 +14,6 @@ export default function AskGemini() {
 
     const jsonPrompt = `
         Generate 5 potential travel plans around "${prompt}". 
-        Return _only_ a JSON array of objects, each with keys in this exact order:
-        1. "name"        (string)
-        2. "price"       (number)
-        3. "latitude"    (number)
-        4. "longitude"   (number)
-        5. "description" (string)
         `;
 
 
@@ -43,6 +37,8 @@ export default function AskGemini() {
       });
 
       const data = await res.json();
+      console.log("i wanna cry");
+      console.log(data.response);
       setResponse(data.response);
     } catch (error) {
       console.error('Error:', error);
