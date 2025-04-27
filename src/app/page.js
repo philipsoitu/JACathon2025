@@ -1,14 +1,14 @@
+"use client"
+
 import Link from "next/link"
 import { ArrowRight, Map, Calendar, Users, ThumbsUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { auth0 } from "@/lib/auth0"
 import { Label } from "@/components/ui/label"
+import { useSession } from "@/contexts/SessionContext"
 
-
-export default async function Home() {
-
-  const session = await auth0.getSession();
-
+export default function Home() {
+  const session = useSession();
+  
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
