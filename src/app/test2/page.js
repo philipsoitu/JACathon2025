@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 
+
+//all of this logic just gets added to the trip page in theory?
+
+
 export default function AskGemini() {
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
@@ -12,18 +16,15 @@ export default function AskGemini() {
     setLoading(true);
     setResponse('');
 
-    const jsonPrompt = `
-        Generate 5 potential travel plans around "${prompt}". 
-        `;
-
+    const jsonPrompt = `Generate 5 potential travel plans around "${prompt}".`;
 
     try {
-      const res = await fetch('/api/gemini', {
+      const res = await fetch('/api/enhance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        //body: JSON.stringify({ prompt })
+        //absoluley disgusting formatting
         body: JSON.stringify({
             contents: [
               {
