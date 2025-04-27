@@ -73,7 +73,21 @@ export function AddActivityDialog({ open, onOpenChange, onSubmit }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Format the data for submission
+    const submissionData = {
+      name: formData.name,
+      location: {
+        type: 'Point',
+        coordinates: [parseFloat(formData.longitude), parseFloat(formData.latitude)]
+      },
+      dateOfVisit: new Date(formData.dateOfVisit).toISOString(),
+      gemeni: formData.gemeni
+    };
+
+    onSubmit(submissionData);
+    
+    // Reset form
     setFormData({
       name: "",
       latitude: "",
@@ -81,6 +95,7 @@ export function AddActivityDialog({ open, onOpenChange, onSubmit }) {
       dateOfVisit: "",
       gemeni: false,
     });
+    
     if (marker.current) {
       marker.current.remove();
     }
@@ -115,7 +130,7 @@ export function AddActivityDialog({ open, onOpenChange, onSubmit }) {
               </Label>
               <Input
                 id="dateOfVisit"
-                type="date"
+                type="datetime-local"
                 value={formData.dateOfVisit}
                 onChange={(e) =>
                   setFormData({ ...formData, dateOfVisit: e.target.value })
