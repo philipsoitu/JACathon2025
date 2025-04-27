@@ -10,6 +10,8 @@ import { useMobile } from "@/hooks/use-mobile"
 import TripMap from "@/components/trip-map"
 import TripTimeline from "@/components/trip-timeline"
 import { useSession } from "@/contexts/SessionContext"
+import { AddActivityDialog } from "@/components/add-activity-dialog"
+import { toast } from "sonner"
 
 export default function TripDetailPage({ params }) {
   const tripId = use(params).id
@@ -20,6 +22,7 @@ export default function TripDetailPage({ params }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [locations, setLocations] = useState({ currentLocations: [], plannedLocations: [] })
+  const [isAddActivityOpen, setIsAddActivityOpen] = useState(false)
 
   // Fetch trip data
   useEffect(() => {
@@ -102,6 +105,36 @@ export default function TripDetailPage({ params }) {
     } catch (err) {
       console.error('Error updating locations:', err);
       throw err;
+    }
+  };
+
+  const handleAddActivity = async (activityData) => {
+    try {
+      const response = await fetch(`/api/trips/${tripId}/activities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(activityData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add activity');
+      }
+
+      const data = await response.json();
+      
+      // Update trip data with new activity
+      setTrip(prev => ({
+        ...prev,
+        activities: [...(prev.activities || []), data]
+      }));
+
+      toast.success('Activity added successfully');
+      setIsAddActivityOpen(false);
+    } catch (error) {
+      console.error('Error adding activity:', error);
+      toast.error('Failed to add activity');
     }
   };
 
@@ -201,10 +234,20 @@ export default function TripDetailPage({ params }) {
 
       {/* Action button */}
       <div className="fixed bottom-20 right-4 z-10">
-        <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-emerald-600 hover:bg-emerald-700">
+        <Button 
+          size="icon" 
+          className="h-14 w-14 rounded-full shadow-lg bg-emerald-600 hover:bg-emerald-700"
+          onClick={() => setIsAddActivityOpen(true)}
+        >
           <Plus className="h-6 w-6" />
         </Button>
       </div>
+
+      <AddActivityDialog
+        open={isAddActivityOpen}
+        onOpenChange={setIsAddActivityOpen}
+        onSubmit={handleAddActivity}
+      />
 
       {/* Mobile Navigation */}
       <div className="sticky bottom-0 bg-white border-t border-gray-200 p-2">

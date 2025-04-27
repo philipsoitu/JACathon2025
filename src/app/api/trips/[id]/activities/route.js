@@ -1,61 +1,44 @@
-import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
-export async function POST(request, context) {
-  const params = await context.params;
-  const id = params.id;
-
-  if (!id) {
-    return NextResponse.json({ error: 'Missing trip ID' }, { status: 400 });
-  }
-
+export async function POST(request, { params }) {
   try {
-    const body = await request.json();
-    const { title, type, time, location, day } = body;
+    const db = await getDb();
+    const tripId = params.id;
+    const activityData = await request.json();
 
     // Validate required fields
-    if (!title || !type || !time || !location || !day) {
-      return NextResponse.json({ 
-        error: 'Missing required fields. Need: title, type, time, location, day' 
-      }, { status: 400 });
+    if (!activityData.name || !activityData.latitude || !activityData.longitude || !activityData.dateOfVisit) {
+      return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Create activity object
     const activity = {
-      id: new ObjectId().toString(), // Generate a unique ID for the activity
-      title,
-      type,
-      time,
-      location,
-      day,
+      name: activityData.name,
+      location: {
+        type: 'Point',
+        coordinates: [parseFloat(activityData.longitude), parseFloat(activityData.latitude)]
+      },
+      dateOfVisit: new Date(activityData.dateOfVisit),
+      gemeni: activityData.gemeni || false,
       createdAt: new Date()
     };
 
-    const db = await getDb();
-    const result = await db
-      .collection('trips')
-      .updateOne(
-        { _id: new ObjectId(id) },
-        { 
-          $push: { activities: activity },
-          $set: { updatedAt: new Date() }
-        }
-      );
+    // Update trip with new activity
+    const result = await db.collection('trips').updateOne(
+      { _id: new ObjectId(tripId) },
+      { 
+        $push: { activities: activity }
+      }
+    );
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
+    if (result.modifiedCount === 0) {
+      return Response.json({ error: 'Trip not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ 
-      message: 'Activity added successfully',
-      activity 
-    });
+    return Response.json(activity, { status: 201 });
   } catch (error) {
-    if (error.message.includes('ObjectId')) {
-      return NextResponse.json({ error: 'Invalid trip ID format' }, { status: 400 });
-    }
-    
     console.error('Error adding activity:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return Response.json({ error: 'Failed to add activity' }, { status: 500 });
   }
 } 

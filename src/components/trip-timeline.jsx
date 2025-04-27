@@ -1,159 +1,51 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, MapPin, Clock, Plane, Home, MountainIcon as Hiking, Plus } from "lucide-react"
+import { Calendar, MapPin, Clock, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { format, addDays } from "date-fns"
-import mapboxgl from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
-
-// Note: In a real application, you would use an environment variable for this
-mapboxgl.accessToken = "pk.eyJ1IjoiZHJwaGlsNTA0MyIsImEiOiJjbTl5eXp5bjUxb25jMmtvcHl4Y2xlZ29zIn0.M1LN3ZUwUkCl9jamss9Oxg"
+import { format } from "date-fns"
+import { AddActivityDialog } from "@/components/add-activity-dialog"
 
 export default function TripTimeline({ trip }) {
   const [isAddingActivity, setIsAddingActivity] = useState(false)
-  const [newActivity, setNewActivity] = useState({
-    title: "",
-    type: "activity",
-    time: "",
-    location: "",
-    longitude: null,
-    latitude: null,
-    day: 1
-  })
-  const [error, setError] = useState(null)
-  const mapContainer = useRef(null)
-  const map = useRef(null)
-  const marker = useRef(null)
 
-  // Calculate total days in trip
-  const tripStart = new Date(trip.beginDate)
-  const tripEnd = new Date(trip.endDate)
-  const totalDays = Math.ceil((tripEnd - tripStart) / (1000 * 60 * 60 * 24))
-
-  useEffect(() => {
-    if (!mapContainer.current || !isAddingActivity) return;
-
+  const handleAddActivity = async (activityData) => {
     try {
-      // Always remove existing map before creating a new one
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-
-      // Initialize map
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/outdoors-v12",
-        center: [-98.5795, 39.8283], // Default to US center
-        zoom: 4,
-        attributionControl: false
+      const response = await fetch(`/api/trips/${trip._id}/activities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(activityData)
       });
 
-      // Add navigation controls
-      map.current.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-
-      // Add click handler
-      map.current.on('click', (e) => {
-        const { lng, lat } = e.lngLat;
-        
-        // Remove existing marker if any
-        if (marker.current) {
-          marker.current.remove();
-        }
-        
-        // Add new marker
-        marker.current = new mapboxgl.Marker()
-          .setLngLat([lng, lat])
-          .addTo(map.current);
-        
-        setNewActivity(prev => ({
-          ...prev,
-          longitude: lng,
-          latitude: lat
-        }));
-
-        // Reverse geocode
-        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`, {
-          headers: {
-            'Origin': window.location.origin
-          }
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (data.features && data.features.length > 0) {
-              setNewActivity(prev => ({
-                ...prev,
-                location: data.features[0].place_name
-              }));
-            }
-          })
-          .catch(err => {
-            console.error('Error reverse geocoding:', err);
-          });
-      });
-
-      // Force map resize after render
-      setTimeout(() => {
-        map.current.resize();
-      }, 100);
-
-    } catch (err) {
-      console.error("Error initializing map:", err);
-    }
-
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
+      if (!response.ok) {
+        throw new Error('Failed to add activity');
       }
-      if (marker.current) {
-        marker.current.remove();
-        marker.current = null;
-      }
-    };
-  }, [isAddingActivity]);
 
-  // Group activities by day (handle undefined activities)
-  const activitiesByDay = (trip.activities || []).reduce((acc, activity) => {
-    if (!acc[activity.day]) {
-      acc[activity.day] = []
+      // Refresh the page to show new activity
+      window.location.reload();
+    } catch (error) {
+      console.error('Error adding activity:', error);
+      alert('Failed to add activity');
     }
-    acc[activity.day].push(activity)
-    return acc
-  }, {})
+  };
 
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case "travel":
-        return <Plane className="h-5 w-5 text-blue-600" />
-      case "accommodation":
-        return <Home className="h-5 w-5 text-amber-600" />
-      case "activity":
-        return <Hiking className="h-5 w-5 text-emerald-600" />
-      default:
-        return <Calendar className="h-5 w-5 text-gray-600" />
+  // Group activities by date
+  const activitiesByDate = {};
+  (trip.activities || []).forEach(activity => {
+    const date = new Date(activity.dateOfVisit).toLocaleDateString();
+    if (!activitiesByDate[date]) {
+      activitiesByDate[date] = [];
     }
-  }
+    activitiesByDate[date].push(activity);
+  });
 
-  const getActivityColor = (type) => {
-    switch (type) {
-      case "travel":
-        return "bg-blue-100"
-      case "accommodation":
-        return "bg-amber-100"
-      case "activity":
-        return "bg-emerald-100"
-      default:
-        return "bg-gray-100"
-    }
-  }
+  // Sort dates
+  const sortedDates = Object.keys(activitiesByDate).sort((a, b) => 
+    new Date(a) - new Date(b)
+  );
 
   // If there are no activities, show a placeholder
   if (!trip.activities || trip.activities.length === 0) {
@@ -166,7 +58,10 @@ export default function TripTimeline({ trip }) {
         <p className="text-sm text-gray-500 mb-4">
           Start planning your trip by adding some activities to your timeline.
         </p>
-        <Button className="bg-emerald-600 hover:bg-emerald-700">
+        <Button 
+          className="bg-emerald-600 hover:bg-emerald-700"
+          onClick={() => setIsAddingActivity(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Activity
         </Button>
@@ -175,50 +70,60 @@ export default function TripTimeline({ trip }) {
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-4 space-y-6">
-        {Object.keys(activitiesByDay).map((day) => (
-          <div key={day} className="space-y-3">
-            <div className="sticky top-0 bg-gray-50 py-2 px-3 rounded-md">
-              <h3 className="font-medium text-gray-700">
-                Day {day} -{" "}
-                {new Date(new Date(trip.beginDate).getTime() + (Number.parseInt(day) - 1) * 24 * 60 * 60 * 1000)
-                  .toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-              </h3>
-            </div>
-            <div className="space-y-3">
-              {activitiesByDay[Number.parseInt(day)].map((activity) => (
-                <div key={activity.id} className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <div className={`p-2 rounded-lg ${getActivityColor(activity.type)}`}>
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="ml-3 flex-1">
-                    <h4 className="font-medium">{activity.title}</h4>
-                    <div className="mt-1 space-y-1">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
-                        {activity.time}
-                      </div>
+    <>
+      <ScrollArea className="h-full">
+        <div className="p-4 space-y-6">
+          {sortedDates.map((date) => (
+            <div key={date} className="space-y-3">
+              <div className="sticky top-0 bg-gray-50 py-2 px-3 rounded-md">
+                <h3 className="font-medium text-gray-700">
+                  {format(new Date(date), "MMMM d, yyyy")}
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {activitiesByDate[date].map((activity, index) => (
+                  <div key={index} className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-medium text-gray-900">{activity.name}</h4>
+                    <div className="mt-2 space-y-1">
                       <div className="flex items-center text-sm text-gray-500">
                         <MapPin className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
-                        {activity.location}
+                        {`${activity.location.coordinates[1].toFixed(4)}, ${activity.location.coordinates[0].toFixed(4)}`}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
+                        {format(new Date(activity.dateOfVisit), "h:mm a")}
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-end">
-                      <Badge variant="outline" className="text-xs">
-                        {activity.type}
-                      </Badge>
-                    </div>
+                    {activity.gemeni && (
+                      <div className="mt-2">
+                        <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                          Gemeni Enabled
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      </ScrollArea>
+
+      <div className="fixed bottom-20 right-4 z-10">
+        <Button 
+          size="icon" 
+          className="h-14 w-14 rounded-full shadow-lg bg-emerald-600 hover:bg-emerald-700"
+          onClick={() => setIsAddingActivity(true)}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
       </div>
-    </ScrollArea>
+
+      <AddActivityDialog
+        open={isAddingActivity}
+        onOpenChange={setIsAddingActivity}
+        onSubmit={handleAddActivity}
+      />
+    </>
   )
 }

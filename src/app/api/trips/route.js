@@ -25,4 +25,34 @@ export async function GET(request) {
     .toArray();
 
   return NextResponse.json(trips);
+}
+
+export async function POST(request) {
+  try {
+    const tripData = await request.json();
+    
+    // Validate required fields
+    if (!tripData.title || !tripData.beginDate || !tripData.endDate || !tripData.owner) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const db = await getDb();
+    
+    // Create trip with empty activities array
+    const trip = {
+      ...tripData,
+      activities: [],
+      currentLocations: [],
+      plannedLocations: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const result = await db.collection('trips').insertOne(trip);
+    
+    return NextResponse.json({ ...trip, _id: result.insertedId }, { status: 201 });
+  } catch (error) {
+    console.error('Error creating trip:', error);
+    return NextResponse.json({ error: 'Failed to create trip' }, { status: 500 });
+  }
 } 
