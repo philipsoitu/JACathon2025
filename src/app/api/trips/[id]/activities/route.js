@@ -3,10 +3,11 @@ import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/mongodb';
 
 // Add a new activity to a trip
-export async function POST(request, { params }) {
+export async function POST(request, context) {
   try {
     const db = await getDb();
-    const { id } = params;
+    const params = await context.params;
+    const id = params.id;
     const activity = await request.json();
 
     // Add default values for votes and comments if not provided
@@ -38,10 +39,11 @@ export async function POST(request, { params }) {
 }
 
 // Update an existing activity
-export async function PUT(request, { params }) {
+export async function PUT(request, context) {
   try {
     const db = await getDb();
-    const { id } = params;
+    const params = await context.params;
+    const id = params.id;
     const { activityId, ...updates } = await request.json();
 
     const result = await db.collection('trips').updateOne(
@@ -77,10 +79,11 @@ export async function PUT(request, { params }) {
 }
 
 // Delete an activity
-export async function DELETE(request, { params }) {
+export async function DELETE(request, context) {
   try {
     const db = await getDb();
-    const { id } = params;
+    const params = await context.params;
+    const id = params.id;
     const { searchParams } = new URL(request.url);
     const activityId = searchParams.get('activityId');
 
