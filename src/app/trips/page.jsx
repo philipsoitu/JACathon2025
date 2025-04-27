@@ -105,24 +105,6 @@ export default function TripsPage() {
           )}
         </div>
       </main>
-
-      {/* Mobile Navigation */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-2">
-        <div className="flex justify-around">
-          <Link href="/trips" className="flex flex-col items-center p-2 text-emerald-600">
-            <Calendar className="h-6 w-6" />
-            <span className="text-xs mt-1">Trips</span>
-          </Link>
-          <Link href="/explore" className="flex flex-col items-center p-2 text-gray-500">
-            <Map className="h-6 w-6" />
-            <span className="text-xs mt-1">Explore</span>
-          </Link>
-          <Link href="/profile" className="flex flex-col items-center p-2 text-gray-500">
-            <User className="h-6 w-6" />
-            <span className="text-xs mt-1">Profile</span>
-          </Link>
-        </div>
-      </div>
     </div>
   )
 }
