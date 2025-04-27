@@ -4,7 +4,6 @@ import { useState } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Calendar, MapPin, Clock, Plus, MoreVertical, Pencil, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { format } from "date-fns"
 import { AddActivityDialog } from "@/components/add-activity-dialog"
 import {
   DropdownMenu,
@@ -23,44 +22,36 @@ export default function TripTimeline({
   const [editingActivity, setEditingActivity] = useState(null)
 
   // Group activities by day
-  const activitiesByDay = {};
-  (trip.activities || []).forEach(activity => {
-    if (!activity || !activity.day) {
-      console.warn('Activity missing day:', activity);
-      return;
-    }
+  const activitiesByDay = {}
+  ;(trip.activities || []).forEach(activity => {
+    if (!activity || !activity.day) return
+    if (!activitiesByDay[activity.day]) activitiesByDay[activity.day] = []
+    activitiesByDay[activity.day].push(activity)
+  })
 
-    if (!activitiesByDay[activity.day]) {
-      activitiesByDay[activity.day] = [];
-    }
-    activitiesByDay[activity.day].push(activity);
-  });
-
-  // Sort days
   const sortedDays = Object.keys(activitiesByDay)
     .map(Number)
-    .sort((a, b) => a - b);
+    .sort((a, b) => a - b)
 
   const handleEditActivity = (activity) => {
-    setEditingActivity(activity);
-    setIsAddingActivity(true);
-  };
+    setEditingActivity(activity)
+    setIsAddingActivity(true)
+  }
 
   const handleActivitySubmit = async (activityData) => {
     try {
       if (editingActivity) {
-        await onUpdateActivity(editingActivity.id, activityData);
+        await onUpdateActivity(editingActivity.id, activityData)
       } else {
-        await onAddActivity(activityData);
+        await onAddActivity(activityData)
       }
-      setIsAddingActivity(false);
-      setEditingActivity(null);
+      setIsAddingActivity(false)
+      setEditingActivity(null)
     } catch (error) {
-      console.error('Error handling activity:', error);
+      console.error('Error handling activity:', error)
     }
-  };
+  }
 
-  // If there are no activities, show a placeholder
   if (!trip.activities || trip.activities.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center">
@@ -73,7 +64,10 @@ export default function TripTimeline({
         </p>
         <Button 
           className="bg-emerald-600 hover:bg-emerald-700"
-          onClick={() => setIsAddingActivity(true)}
+          onClick={() => {
+            setEditingActivity(null)
+            setIsAddingActivity(true)
+          }}
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Activity
@@ -89,13 +83,14 @@ export default function TripTimeline({
           {sortedDays.map((day) => (
             <div key={day} className="space-y-3">
               <div className="sticky top-0 bg-gray-50 py-2 px-3 rounded-md">
-                <h3 className="font-medium text-gray-700">
-                  Day {day}
-                </h3>
+                <h3 className="font-medium text-gray-700">Day {day}</h3>
               </div>
               <div className="space-y-3">
                 {activitiesByDay[day].map((activity) => (
-                  <div key={activity.id} className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div
+                    key={activity.id}
+                    className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm"
+                  >
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-medium text-gray-900">{activity.title}</h4>
@@ -121,7 +116,7 @@ export default function TripTimeline({
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-red-600"
                             onClick={() => onDeleteActivity(activity.id)}
                           >
@@ -142,8 +137,8 @@ export default function TripTimeline({
       <AddActivityDialog
         open={isAddingActivity}
         onOpenChange={(open) => {
-          setIsAddingActivity(open);
-          if (!open) setEditingActivity(null);
+          setIsAddingActivity(open)
+          if (!open) setEditingActivity(null)
         }}
         onSubmit={handleActivitySubmit}
         initialData={editingActivity}
