@@ -51,8 +51,8 @@ export default function Home() {
             <div className="mt-8">
               <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700" asChild>
                 {session ? (
-                  <Link href="/trips/new">
-                    Create a Trip <ArrowRight className="ml-2 h-4 w-4" />
+                  <Link href="/trips">
+                    View Trips <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 ) : (
                     <Link href="/auth/login">
