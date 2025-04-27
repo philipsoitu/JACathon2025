@@ -51,9 +51,14 @@ export default function TripMap({ activities = [], onMapClick }) {
 
       map.current.addControl(new mapboxgl.NavigationControl(), "bottom-right")
 
+      // Only open "Add Activity" dialog on clicks that are NOT on a marker.
       map.current.on('click', (e) => {
-        const { lat, lng } = e.lngLat
-        onMapClick(lat, lng)
+        const target = e.originalEvent.target
+        // If the click came from inside a .mapboxgl-marker element, do nothing here
+        if (target instanceof HTMLElement && target.closest('.mapboxgl-marker')) {
+          return
+        }
+        onMapClick(e.lngLat.lat, e.lngLat.lng)
       })
     } catch (err) {
       console.error("Error initializing map:", err)
@@ -63,13 +68,13 @@ export default function TripMap({ activities = [], onMapClick }) {
     return () => {
       if (map.current) map.current.remove()
     }
-  }, [])
+  }, [onMapClick, activities])
 
-  // Render activity markers
+  // Render activity markers + popups
   useEffect(() => {
     if (!map.current) return
 
-    // Remove existing markers
+    // Clear out any old markers
     const oldMarkers = document.getElementsByClassName('mapboxgl-marker')
     while (oldMarkers[0]) {
       oldMarkers[0].remove()
@@ -81,8 +86,10 @@ export default function TripMap({ activities = [], onMapClick }) {
 
     activities.forEach((act) => {
       const el = document.createElement('div')
+      // This inner div will live inside the .mapboxgl-marker wrapper
       el.className = 'w-6 h-6 bg-emerald-500 rounded-full border-2 border-white'
 
+      // Create marker + bind popup
       new mapboxgl.Marker(el)
         .setLngLat(act.coordinates)
         .setPopup(
@@ -98,8 +105,6 @@ export default function TripMap({ activities = [], onMapClick }) {
         .addTo(map.current)
 
       bounds.extend(act.coordinates)
-
-      el.addEventListener('click', () => onMapClick(act.coordinates[1], act.coordinates[0]))
     })
 
     map.current.fitBounds(bounds, {
@@ -122,7 +127,7 @@ export default function TripMap({ activities = [], onMapClick }) {
         style={{ minHeight: '400px' }}
       />
 
-      {/* Map controls */}
+      {/* Map zoom controls */}
       <div className="absolute bottom-20 right-4 z-10 flex flex-col space-y-2">
         <Button
           variant="secondary"

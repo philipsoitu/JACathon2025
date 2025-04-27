@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { use } from "react"
 import Link from "next/link"
-import { ArrowLeft, Calendar, MapIcon, MessageSquare, Share2, Plus, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, Calendar, MapIcon, MessageSquare, Share2, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useMobile } from "@/hooks/use-mobile"
@@ -234,9 +234,8 @@ export default function TripDetailPage({ params }) {
     return <div className="flex items-center justify-center h-screen">Trip not found</div>;
   }
 
-  const formatDateRange = (beginDate, endDate) => {
-    return `${new Date(beginDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
-  };
+  const formatDateRange = (beginDate, endDate) =>
+    `${new Date(beginDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`
 
   return (
     <div className="flex flex-col h-screen">
@@ -267,16 +266,13 @@ export default function TripDetailPage({ params }) {
 
       {/* Main content */}
       <main className="flex-1 overflow-hidden">
-        <Tabs defaultValue="maps" value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+        <Tabs defaultValue="map" value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <TabsList className="grid grid-cols-2 px-4 py-2 bg-white border-b">
             <TabsTrigger value="map" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
               <MapIcon className="h-4 w-4 mr-2" />
               Map
             </TabsTrigger>
-            <TabsTrigger
-              value="timeline"
-              className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600"
-            >
+            <TabsTrigger value="timeline" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
               <Calendar className="h-4 w-4 mr-2" />
               Timeline
             </TabsTrigger>
@@ -306,17 +302,7 @@ export default function TripDetailPage({ params }) {
         </Tabs>
       </main>
 
-      {/* Action button */}
-      <div className="fixed bottom-20 right-4 z-10">
-        <Button 
-          size="icon" 
-          className="h-14 w-14 rounded-full shadow-lg bg-emerald-600 hover:bg-emerald-700"
-          onClick={() => setIsAddActivityOpen(true)}
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
-      </div>
-
+      {/* Add Activity Dialog (triggered via map click) */}
       <AddActivityDialog
         open={isAddActivityOpen}
         onOpenChange={setIsAddActivityOpen}
