@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
+import { actionAsyncStorage } from 'next/dist/server/app-render/action-async-storage.external';
 
 export async function POST(request) {
   const body = await request.json();
@@ -27,8 +28,7 @@ export async function POST(request) {
       createdAt: new Date(),
       owner: body.owner,
       participants: [],
-      currentLocations: [],
-      plannedLocations: [],
+      activities: [],
     });
 
   return NextResponse.json(result);
