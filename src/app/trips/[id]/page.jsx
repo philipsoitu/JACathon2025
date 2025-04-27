@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { use } from "react"
 import Link from "next/link"
 import { ArrowLeft, Calendar, MapIcon, MessageSquare, Share2, Plus, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,7 @@ import TripMap from "@/components/trip-map"
 import TripTimeline from "@/components/trip-timeline"
 
 export default function TripDetailPage({ params }) {
+  const tripId = use(params).id
   const isMobile = useMobile()
   const [activeTab, setActiveTab] = useState("timeline")
   const [isConnected, setIsConnected] = useState(false)
@@ -27,7 +29,7 @@ export default function TripDetailPage({ params }) {
 
   // Sample trip data
   const trip = {
-    id: params.id,
+    id: tripId,
     title: "North America Climbing Trip",
     dateRange: "May 15 - June 10, 2025",
     days: 27,
