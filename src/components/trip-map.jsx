@@ -86,10 +86,8 @@ export default function TripMap({ activities = [], onMapClick }) {
 
     activities.forEach((act) => {
       const el = document.createElement('div')
-      // This inner div will live inside the .mapboxgl-marker wrapper
       el.className = 'w-6 h-6 bg-emerald-500 rounded-full border-2 border-white'
 
-      // Create marker + bind popup
       new mapboxgl.Marker(el)
         .setLngLat(act.coordinates)
         .setPopup(
@@ -114,7 +112,7 @@ export default function TripMap({ activities = [], onMapClick }) {
   }, [activities])
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full min-h-0">
       {error && (
         <div className="absolute top-4 left-4 right-4 z-20 bg-red-100 text-red-700 p-3 rounded-lg">
           Error: {error}
@@ -123,8 +121,7 @@ export default function TripMap({ activities = [], onMapClick }) {
 
       <div
         ref={mapContainer}
-        className="absolute inset-0"
-        style={{ minHeight: '400px' }}
+        className="absolute inset-0 h-full"
       />
 
       {/* Map zoom controls */}
